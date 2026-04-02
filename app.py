@@ -1,26 +1,38 @@
 import streamlit as st
-import joblib
 import numpy as np
+import joblib
+import os
+import pandas as pd
+from sklearn.ensemble import RandomForestRegressor
 
-# Load model
-model = joblib.load("model/model.pkl")
+def train_model():
+    df = pd.read_csv("data/battery_data.csv")
 
-st.set_page_config(page_title="Battery Temp Predictor")
+    X = df[['voltage', 'current', 'time']]
+    y = df['temperature']
 
-st.title("🔋 Battery Temperature Prediction (NASA Data)")
+    model = RandomForestRegressor(n_estimators=50, max_depth=10)
+    model.fit(X, y)
 
-st.write("Enter environmental conditions:")
+    os.makedirs("model", exist_ok=True)
+    joblib.dump(model, "model/model.pkl")
 
-# Inputs
-t2m_max = st.number_input("Max Temperature (°C)", value=30.0)
-t2m_min = st.number_input("Min Temperature (°C)", value=20.0)
-rh = st.number_input("Humidity (%)", value=70.0)
-ws = st.number_input("Wind Speed (m/s)", value=3.0)
-rain = st.number_input("Precipitation", value=1.0)
+    return model
 
-# Prediction
-if st.button("Predict Temperature"):
-    input_data = np.array([[t2m_max, t2m_min, rh, ws, rain]])
-    prediction = model.predict(input_data)
+# Load or train
+if not os.path.exists("model/model.pkl"):
+    model = train_model()
+else:
+    model = joblib.load("model/model.pkl")
 
-    st.success(f"🌡 Predicted Battery Temp: {prediction[0]:.2f} °C")
+st.title("🔋 Battery Temperature Predictor (NASA Dataset)")
+
+voltage = st.number_input("Voltage (V)", value=4.0)
+current = st.number_input("Current (A)", value=1.5)
+time = st.number_input("Time (s)", value=100.0)
+
+if st.button("Predict"):
+    input_data = np.array([[voltage, current, time]])
+    pred = model.predict(input_data)
+
+    st.success(f"🌡 Temperature: {pred[0]:.2f} °C")
